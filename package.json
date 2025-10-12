@@ -1,6 +1,6 @@
 {
   "name": "@crossatko/slaydover",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "private": false,
   "type": "module",
   "engines": {
@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-  "build": "vite build && npm run build:types",
+    "build": "vite build && npm run build:types",
     "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types --p tsconfig.app.json --noEmit false"
   },
   "dependencies": {
