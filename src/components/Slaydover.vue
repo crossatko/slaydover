@@ -2,7 +2,6 @@
 import { computed, nextTick, watch, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useSwipe } from '@vueuse/core'
 import type { UseSwipeDirection } from '@vueuse/core'
-import type { SlaydoverOptions } from '@/types/slaydover'
 
 type Breakpoint = string
 type Side = 'top' | 'right' | 'bottom' | 'left'
@@ -18,7 +17,10 @@ const {
     xl: 1280,
     '2xl': 1536,
   },
-} = defineProps<SlaydoverOptions>()
+} = defineProps<{
+  position?: string
+  breakpoints?: Record<string, number>
+}>()
 
 function validatePosition(position: string): boolean {
   const parts = position.split(' ')
