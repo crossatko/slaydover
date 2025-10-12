@@ -1,23 +1,25 @@
 <script setup lang="ts">
-import { computed, defineModel, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, nextTick, watch, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
 import { useSwipe } from '@vueuse/core'
 import type { UseSwipeDirection } from '@vueuse/core'
 
-const breakpoints = {
-  xs: 360,
-  sm: 480,
-  md: 768,
-  lg: 1024,
-  xl: 1280,
-  '2xl': 1536,
-}
-
-type Breakpoint = keyof typeof breakpoints
+type Breakpoint = string
 type Side = 'top' | 'right' | 'bottom' | 'left'
 type Breakpoints = Partial<Record<'default' | Breakpoint, Side>>
 
-const { position = 'bottom md:left' } = defineProps<{
+const {
+  position = 'bottom md:left',
+  breakpoints = {
+    xs: 360,
+    sm: 480,
+    md: 768,
+    lg: 1024,
+    xl: 1280,
+    '2xl': 1536,
+  },
+} = defineProps<{
   position?: string
+  breakpoints?: Record<string, number>
 }>()
 
 function validatePosition(position: string): boolean {
@@ -30,6 +32,12 @@ function validatePosition(position: string): boolean {
     }
     return ['top', 'right', 'bottom', 'left'].includes(part)
   })
+}
+
+if (position && !validatePosition(position)) {
+  console.warn(
+    `Invalid position prop: "${position}". Expected format: side or breakpoint:side (e.g., "top md:right").`,
+  )
 }
 
 const sidesByBreakpoints = computed((): Breakpoints => {
@@ -53,12 +61,6 @@ const sidesByBreakpoints = computed((): Breakpoints => {
   }
   return result
 })
-
-if (position && !validatePosition(position)) {
-  console.warn(
-    `Invalid position prop: "${position}". Expected format: side or breakpoint:side (e.g., "top md:right").`,
-  )
-}
 
 const slaydover = useTemplateRef('slaydover')
 const slaydoverContent = useTemplateRef('slaydoverContent')
@@ -134,7 +136,7 @@ function generateStyles(): string {
     let positionStyles = ''
     switch (side) {
       case 'top':
-        positionStyles = 'top: 0; left: 0; right: 0; right: auto;'
+        positionStyles = 'top: 0; left: 0; right: 0; bottom: auto;'
         break
       case 'right':
         positionStyles = 'top: 0; right: 0; bottom: 0; left: auto;'
@@ -179,42 +181,87 @@ function close() {
 }
 
 const canClose = ref(true)
-const lastContentScroll = ref(0)
 const coords = ref<{ x: number; y: number }>({ x: 0, y: 0 })
 const isScrolling = ref(false)
+const content = ref<HTMLElement | null>(null)
+
+watch(open, async (newVal) => {
+  if (typeof document === 'undefined') return
+  if (newVal) {
+    await nextTick()
+
+    content.value = (slaydoverContent.value?.children?.[0] as HTMLElement) || null
+    document.documentElement.style.overscrollBehaviorY = 'none'
+    document.body.style.overscrollBehaviorY = 'none'
+  } else {
+    document.documentElement.style.overscrollBehaviorY = ''
+    document.body.style.overscrollBehaviorY = ''
+  }
+})
 
 const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
   passive: false,
   onSwipe(e: TouchEvent) {
+    if (!content.value) return
+
     coords.value = { x: lengthX.value, y: lengthY.value }
-    const content = slaydoverContent.value?.children?.[0] as HTMLDivElement
-    if (!content) return
+
+    if (
+      (activePosition.value === 'bottom' && content.value.scrollTop > 0) ||
+      (activePosition.value === 'top' &&
+        content.value.scrollTop < content.value.scrollHeight - content.value.clientHeight)
+    ) {
+      canClose.value = false
+    }
+
     if (!canClose.value) return
 
-    content.onscroll = () => {
+    content.value.onscroll = () => {
       isScrolling.value = true
     }
-    content.onscrollend = () => {
+    content.value.onscrollend = () => {
       isScrolling.value = false
     }
 
     if (isScrolling.value) return
 
-    if (activePosition.value === 'bottom' && lengthY.value < 0) {
-      content.style.transform = `translateY(${coords.value.y * -1}px)`
-    } else if (activePosition.value === 'top' && lengthY.value > 0) {
-      if (content.scrollTop === content.scrollHeight - content.clientHeight) {
-        content.style.transform = `translateY(${coords.value.y * -1}px)`
+    if (['top', 'bottom'].includes(activePosition.value) && Math.abs(lengthX.value) > 50) return
+    if (['left', 'right'].includes(activePosition.value) && Math.abs(lengthY.value) > 50) return
+
+    if (activePosition.value === 'bottom') {
+      if (lengthY.value < 0) {
+        content.value.style.transform = `translateY(${coords.value.y * -1}px)`
+      } else {
+        content.value.style.transform = `scaleY(${1 + coords.value.y * 0.0002})`
+        content.value.style.transformOrigin = 'bottom'
       }
-    } else if (activePosition.value === 'left' && lengthX.value > 0) {
-      content.style.transform = `translateX(${coords.value.x * -1}px)`
-    } else if (activePosition.value === 'right' && lengthX.value < 0) {
-      content.style.transform = `translateX(${coords.value.x * -1}px)`
+    } else if (activePosition.value === 'top') {
+      if (lengthY.value > 0) {
+        content.value.style.transform = `translateY(${coords.value.y * -1}px)`
+      } else {
+        content.value.style.transform = `scaleY(${1 - coords.value.y * 0.0002})`
+        content.value.style.transformOrigin = 'top'
+      }
+    } else if (activePosition.value === 'left') {
+      if (lengthX.value > 0) {
+        content.value.style.transform = `translateX(${coords.value.x * -1}px)`
+      } else {
+        content.value.style.transform = `scaleX(${1 - coords.value.x * 0.0001})`
+        content.value.style.transformOrigin = 'left'
+      }
+    } else if (activePosition.value === 'right') {
+      if (lengthX.value < 0) {
+        content.value.style.transform = `translateX(${coords.value.x * -1}px)`
+      } else {
+        content.value.style.transform = `scaleX(${1 + coords.value.x * 0.0001})`
+        content.value.style.transformOrigin = 'right'
+      }
+    } else {
+      content.value.style.transform = `translateX(0px) translateY(0px) scale(1)`
     }
   },
   onSwipeEnd(e: TouchEvent, direction: UseSwipeDirection) {
-    const content = slaydoverContent.value?.children?.[0] as HTMLDivElement
-    if (!content) return
+    if (!content.value) return
 
     let closing = false
 
@@ -240,33 +287,18 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
       ['up', 'down', 'none'].includes(direction) &&
       ['top', 'bottom'].includes(activePosition.value)
     ) {
-      if (Math.abs(coords.value?.y) < content.getBoundingClientRect().height / 4) {
+      if (Math.abs(coords.value?.y) < content.value.getBoundingClientRect().height / 4) {
         closing = false
         coords.value.y = 0
-        resetElementTransform(content)
       }
     } else if (
       ['left', 'right', 'none'].includes(direction) &&
       ['left', 'right'].includes(activePosition.value)
     ) {
-      if (Math.abs(coords.value?.x) < content.getBoundingClientRect().width / 4) {
+      if (Math.abs(coords.value?.x) < content.value.getBoundingClientRect().width / 4) {
         closing = false
         coords.value.x = 0
-        resetElementTransform(content)
       }
-    }
-
-    lastContentScroll.value = content.scrollTop
-    if (activePosition.value === 'bottom' && lastContentScroll.value > 0) {
-      canClose.value = false
-    }
-
-    if (
-      activePosition.value === 'top' &&
-      content.scrollHeight > content.clientHeight &&
-      lastContentScroll.value === content.scrollHeight - content.clientHeight
-    ) {
-      canClose.value = false
     }
 
     if (closing) {
@@ -275,14 +307,32 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
       return
     }
 
+    resetElementTransform(content.value)
+
     coords.value = { x: 0, y: 0 }
   },
+})
+
+watch(isSwiping, (newVal) => {
+  if (!newVal || !content.value) return
+  if (
+    (direction.value === 'left' && activePosition.value === 'left') ||
+    (direction.value === 'right' && activePosition.value === 'right') ||
+    (direction.value === 'up' && activePosition.value === 'top') ||
+    (direction.value === 'down' && activePosition.value === 'bottom')
+  ) {
+    content.value.style.transition = `.05s ease`
+    setTimeout(() => {
+      if (!content.value) return
+      content.value.style.transition = ''
+    }, 500)
+  }
 })
 
 function resetElementTransform(el: HTMLElement | null) {
   if (!el) return
   el.style.transition = 'transform 0.2s ease-in-out'
-  el.style.transform = 'translateX(0px) translateY(0px)'
+  el.style.transform = 'translateX(0px) translateY(0px) scale(1)'
   setTimeout(() => {
     if (!el) return
     el.style.transition = ''
@@ -301,7 +351,7 @@ function resetElementTransform(el: HTMLElement | null) {
         v-if="open"
       >
         <slot name="overlay">
-          <div></div>
+          <div class="slaydover-overlay-default"></div>
         </slot>
       </div>
     </Transition>
@@ -370,7 +420,7 @@ function resetElementTransform(el: HTMLElement | null) {
   </div>
 </template>
 
-<style scoped>
+<style>
 * {
   box-sizing: border-box;
 }
@@ -397,17 +447,20 @@ function resetElementTransform(el: HTMLElement | null) {
   will-change: transform, opacity;
 }
 .slaydover-overlay > div {
-  background: rgba(0, 0, 0, 0.5);
   flex-grow: 1;
   pointer-events: auto;
   position: relative;
+  will-change: transform, opacity;
+}
+
+.slaydover-overlay-default {
+  background: rgba(0, 0, 0, 0.5);
 }
 
 .slaydover-content {
   position: absolute;
   display: flex;
   z-index: 9010;
-  pointer-events: auto;
   will-change: transform, opacity;
   width: auto;
   min-width: 100px;
@@ -417,6 +470,8 @@ function resetElementTransform(el: HTMLElement | null) {
   flex-grow: 1;
   overflow-y: auto;
   max-height: 100svh;
+  pointer-events: auto;
+  will-change: transform, opacity;
 }
 
 .slaydover-overlay-enter-active,
