@@ -37,7 +37,7 @@ const open = ref(false)
 </script>
 
 <template>
-  <button @click="open = true" class="p-2 bg-black text-white rounded">Open Slaydover</button>
+  <button @click="open = true">Open Slaydover</button>
 
   <Slaydover v-model="open" position="bottom lg:right">
     <div>Your awesome content 👌</div>
