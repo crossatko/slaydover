@@ -5,6 +5,12 @@ Perfect for modals, drawers, and slide-overs with smooth transitions and mobile 
 
 ---
 
+## Demo
+
+[Live Demo](https://crossatko.dev/slaydover#demo)
+
+---
+
 ## Features
 
 - Responsive positions based on breakpoints (`md:left`, `lg:right`, etc.)
