@@ -1,10 +1,16 @@
 <script setup lang="ts">
+import type { App } from 'vue'
 import { ref } from 'vue'
 import Slaydover from './components/Slaydover.vue'
 const open = ref(false)
 
 function toggle() {
   open.value = !open.value
+}
+
+// Optional: allow app.use(Slaydover)
+Slaydover.install = (app: App) => {
+  app.component('Slaydover', Slaydover)
 }
 </script>
 
@@ -19,7 +25,7 @@ function toggle() {
 
   <Slaydover
     v-model="open"
-    position="bottom lg:right"
+    position="top xl:right"
     :class="{ 'backdrop-blur-[8px]': open }"
     class="transition-all duration-300"
   >
@@ -35,11 +41,6 @@ function toggle() {
           Lorem ipsum dolor sit amet consectetur adipisicing elit. Quae sed tempore exercitationem
           ducimus! Quibusdam soluta quam in quia autem eligendi sint repudiandae eius quo amet enim,
           nulla, corrupti, ea nemo!
-        </p>
-        <p>
-          Quae rem harum, aspernatur omnis nostrum, sequi eveniet eum quo, provident iusto quia quod
-          aliquam animi minus in perspiciatis! Ducimus in voluptas, itaque cupiditate nihil iste
-          sint aut consequatur accusantium.
         </p>
       </div>
     </div>

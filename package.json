@@ -1,6 +1,6 @@
 {
   "name": "slaydover",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -32,5 +32,18 @@
     "vite": "^7.1.7",
     "vite-plugin-vue-devtools": "^8.0.2",
     "vue-tsc": "^3.1.0"
-  }
+  },
+  "description": "",
+  "main": "dist/slaydover.es.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crossatko/slaydover.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/crossatko/slaydover/issues"
+  },
+  "homepage": "https://github.com/crossatko/slaydover#readme"
 }

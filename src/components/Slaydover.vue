@@ -105,7 +105,6 @@ function getActivePosition(): Side {
   }
 
   activePosition.value = position
-  canClose.value = position !== 'top'
   return position
 }
 
@@ -359,60 +358,21 @@ function resetElementTransform(el: HTMLElement | null) {
     <Transition :name="`slaydover-content-${getActivePosition()}`">
       <div class="slaydover-content" ref="slaydoverContent" v-if="open">
         <slot>
-          <div style="background: white; padding: 2rem; max-width: 768px">
-            <p>
-              Lorem ipsum dolor sit amet consectetur, adipisicing elit. Deleniti illum totam
-              doloremque modi? Quia praesentium itaque nulla similique reiciendis sequi numquam
-              temporibus eaque, fugiat perspiciatis est a? Rem, optio perferendis.
-            </p>
-            <p>
-              Et cum tempora unde maiores eaque, libero ipsa est voluptas ut aliquam, asperiores
-              alias ab harum dolore. Eaque molestias saepe ea ullam exercitationem, voluptates illum
-              voluptas provident in distinctio maxime!
-            </p>
-            <p>
-              Consequatur perferendis sequi enim veritatis eveniet sunt natus laborum tempore non
-              ipsum, molestias assumenda debitis nesciunt quod recusandae suscipit officia! Eius,
-              rerum voluptate. Quam, fugiat tempore quia voluptas et necessitatibus.
-            </p>
-            <p>
-              Nobis rerum corrupti explicabo eos iusto autem, aperiam quidem, perspiciatis
-              accusantium magnam nulla maiores laborum possimus repellendus dolorum impedit
-              assumenda rem nihil vero. Eveniet ad nisi blanditiis sint harum nihil!
-            </p>
-            <p>
-              Culpa, exercitationem blanditiis! Cum ipsam, quaerat pariatur necessitatibus minima
-              culpa aut distinctio tenetur blanditiis praesentium illum sed accusamus placeat
-              reprehenderit vero laborum inventore nobis dolorum minus recusandae. Iure, sed? Quo.
-            </p>
-            <p>
-              Nulla est velit cumque? Voluptatum recusandae velit rerum. Illum consectetur delectus
-              est dicta ullam odio dolor consequatur eligendi, adipisci temporibus velit cupiditate
-              enim accusamus placeat eveniet. Soluta ipsum voluptatibus ducimus.
-            </p>
-            <p>
-              Corrupti, magnam aliquid aspernatur error eos asperiores pariatur eligendi
-              necessitatibus, consequuntur reprehenderit dicta numquam commodi tenetur molestias
-              porro reiciendis velit odit alias nam, praesentium totam dolores deserunt ducimus.
-              Nemo, in!
-            </p>
-            <p>
-              Commodi saepe consequatur neque vel repellendus rem laudantium dolor dicta, itaque
-              aliquam tenetur cum vero quae accusamus repudiandae cumque, optio iusto rerum natus id
-              at? Quisquam sed corrupti natus aperiam?
-            </p>
-            <div>slaydover</div>
-            <div>{{ open }}</div>
-            <div>
-              {{ position }}
+          <div style="padding: 0.5rem; pointer-events: none">
+            <div
+              style="
+                background: white;
+                padding: 2rem;
+                text-align: center;
+                border-radius: 4px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                margin: 0px auto;
+                pointer-events: auto;
+                max-width: 768px;
+              "
+            >
+              You forgot to place a `slot` inside the Slaydover component!
             </div>
-            <div>
-              {{ sidesByBreakpoints }}
-            </div>
-            <div>{{ generateStyles() }}</div>
-            <div>{{ activeBreakpoint }}</div>
-            <div>{{ activePosition }}</div>
-            <div>{{ isSwiping }} {{ direction }}</div>
           </div>
         </slot>
       </div>

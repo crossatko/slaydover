@@ -1,4 +1,8 @@
-import { createApp } from 'vue'
-import App from './App.vue'
+import type { App } from 'vue'
+import Slaydover from './components/Slaydover.vue'
 
-createApp(App).mount('#app')
+Slaydover.install = (app: App) => {
+  app.component('Slaydover', Slaydover)
+}
+
+export default Slaydover
