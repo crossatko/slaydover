@@ -52,7 +52,7 @@ const open = ref(false)
 | Prop          | Type                     | Default                                                          | Description                                                                                                         |
 | ------------- | ------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `v-model`     | `boolean`                | `false`                                                          | Controls whether the Slaydover is open                                                                              |
-| `position`    | `string`                 | `'bottom md:left'`                                               | Determines which side(s) the Slaydover appears from. Can include breakpoint-based modifiers (e.g. `'top md:right'`) |
+| `position`    | `string`                 | `'bottom md:right'`                                              | Determines which side(s) the Slaydover appears from. Can include breakpoint-based modifiers (e.g. `'top md:right'`) |
 | `breakpoints` | `Record<string, number>` | `{ xs: 360, sm: 480, md: 768, lg: 1024, xl: 1280, '2xl': 1536 }` | Custom breakpoint definitions (in pixels)                                                                           |
 
 ### Position Syntax

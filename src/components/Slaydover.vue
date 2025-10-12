@@ -8,7 +8,7 @@ type Side = 'top' | 'right' | 'bottom' | 'left'
 type Breakpoints = Partial<Record<'default' | Breakpoint, Side>>
 
 const {
-  position = 'bottom md:left',
+  position = 'bottom md:right',
   breakpoints = {
     xs: 360,
     sm: 480,
