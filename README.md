@@ -90,7 +90,7 @@ To customize it, use the `#overlay` slot:
 
 ```vue
 <template #overlay>
-  <div class="bg-black/40 backdrop-blur-sm"></div>
+  <div class="bg-black/40"></div>
 </template>
 ```
 
@@ -121,8 +121,8 @@ To customize it, use the `#overlay` slot:
 ```vue
 <Slaydover
   v-model="open"
-  position="top md:right"
   class="transition-all duration-300"
+  position="top md:right"
   :class="{ 'backdrop-blur-sm': open }"
 >
   <template #overlay>
