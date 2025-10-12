@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "vite",
     "preview": "vite preview",
-    "build": "vite build"
+  "build": "vite build && npm run build:types",
+    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types --p tsconfig.app.json --noEmit false"
   },
   "dependencies": {
     "@vueuse/core": "^13.9.0",
@@ -29,6 +30,7 @@
   },
   "description": "",
   "main": "dist/slaydover.es.js",
+  "types": "dist/types/main.d.ts",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/crossatko/slaydover.git"
