@@ -34,10 +34,10 @@
     "url": "git+https://github.com/crossatko/slaydover.git"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Paul Cross",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/crossatko/slaydover/issues"
   },
-  "homepage": "https://github.com/crossatko/slaydover#readme"
+  "homepage": "https://crossatko.dev/slaydover"
 }
