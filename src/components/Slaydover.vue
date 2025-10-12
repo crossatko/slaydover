@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, watch, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
-import { useSwipe } from '@vueuse/core'
+import { useSwipe, useDebounceFn } from '@vueuse/core'
 import type { UseSwipeDirection } from '@vueuse/core'
 
 type Breakpoint = string
@@ -113,14 +113,10 @@ function getActivePosition(): Side {
   return position
 }
 
-let resizeTimeout: number | undefined
-
-function onResizeDebounced(callback: () => void, delay = 100) {
-  if (resizeTimeout) clearTimeout(resizeTimeout)
-  resizeTimeout = window.setTimeout(callback, delay)
-}
-
-let resizeHandler: () => void
+const resizeHandler = useDebounceFn(() => {
+  getActiveBreakpoint()
+  getActivePosition()
+}, 100)
 
 function generateStyles(): string {
   if (!slaydover.value) return ''
@@ -167,12 +163,6 @@ function generateStyles(): string {
 onMounted(() => {
   generateStyles()
   getActiveBreakpoint()
-  resizeHandler = () => {
-    onResizeDebounced(() => {
-      getActiveBreakpoint()
-      getActivePosition()
-    })
-  }
   window.addEventListener('resize', resizeHandler)
 })
 
