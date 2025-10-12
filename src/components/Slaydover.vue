@@ -17,9 +17,15 @@ const {
     xl: 1280,
     '2xl': 1536,
   },
+  modelValue: open,
 } = defineProps<{
   position?: string
   breakpoints?: Record<string, number>
+  modelValue: boolean
+}>()
+
+const emit = defineEmits<{
+'update:modelValue': [value: boolean]
 }>()
 
 function validatePosition(position: string): boolean {
@@ -64,7 +70,6 @@ const sidesByBreakpoints = computed((): Breakpoints => {
 
 const slaydover = useTemplateRef('slaydover')
 const slaydoverContent = useTemplateRef('slaydoverContent')
-const open = defineModel<boolean>()
 
 const activeBreakpoint = ref<Breakpoint | 'default'>('default')
 const activePosition = ref<Side>(sidesByBreakpoints.value.default || 'bottom')
@@ -176,7 +181,7 @@ onBeforeUnmount(() => {
 })
 
 function close() {
-  open.value = false
+  emit('update:modelValue', false)
 }
 
 const canClose = ref(true)
@@ -184,7 +189,7 @@ const coords = ref<{ x: number; y: number }>({ x: 0, y: 0 })
 const isScrolling = ref(false)
 const content = ref<HTMLElement | null>(null)
 
-watch(open, async (newVal) => {
+watch(() => open, async (newVal) => {
   if (typeof document === 'undefined') return
   if (newVal) {
     await nextTick()
