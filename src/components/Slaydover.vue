@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, watch, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue'
+import {
+  computed,
+  nextTick,
+  watch,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  useTemplateRef
+} from 'vue'
 import { useSwipe, useDebounceFn } from '@vueuse/core'
 import type { UseSwipeDirection } from '@vueuse/core'
 
@@ -15,9 +23,9 @@ const {
     md: 768,
     lg: 1024,
     xl: 1280,
-    '2xl': 1536,
+    '2xl': 1536
   },
-  modelValue: open,
+  modelValue: open
 } = defineProps<{
   position?: string
   breakpoints?: Record<string, number>
@@ -25,7 +33,7 @@ const {
 }>()
 
 const emit = defineEmits<{
-'update:modelValue': [value: boolean]
+  'update:modelValue': [value: boolean]
 }>()
 
 function validatePosition(position: string): boolean {
@@ -34,7 +42,10 @@ function validatePosition(position: string): boolean {
     if (part.includes(':')) {
       const [bp, side] = part.split(':')
       if (!bp || !side) return false
-      return breakpoints[bp as Breakpoint] && ['top', 'right', 'bottom', 'left'].includes(side)
+      return (
+        breakpoints[bp as Breakpoint] &&
+        ['top', 'right', 'bottom', 'left'].includes(side)
+      )
     }
     return ['top', 'right', 'bottom', 'left'].includes(part)
   })
@@ -42,7 +53,7 @@ function validatePosition(position: string): boolean {
 
 if (position && !validatePosition(position)) {
   console.warn(
-    `Invalid position prop: "${position}". Expected format: side or breakpoint:side (e.g., "top md:right").`,
+    `Invalid position prop: "${position}". Expected format: side or breakpoint:side (e.g., "top md:right").`
   )
 }
 
@@ -121,7 +132,9 @@ const resizeHandler = useDebounceFn(() => {
 function generateStyles(): string {
   if (!slaydover.value) return ''
   const styleElementId = 'slaydover-dynamic-styles'
-  let styleElement = document.getElementById(styleElementId) as HTMLStyleElement | null
+  let styleElement = document.getElementById(
+    styleElementId
+  ) as HTMLStyleElement | null
   if (!styleElement) {
     styleElement = document.createElement('style')
     styleElement.id = styleElementId
@@ -131,7 +144,9 @@ function generateStyles(): string {
   let styles = ''
   for (const [bp, side] of Object.entries(sidesByBreakpoints.value)) {
     const selector =
-      bp === 'default' ? '' : `@media (min-width: ${breakpoints[bp as Breakpoint]}px) {`
+      bp === 'default'
+        ? ''
+        : `@media (min-width: ${breakpoints[bp as Breakpoint]}px) {`
     const closingBracket = bp === 'default' ? '' : '}'
     let positionStyles = ''
     switch (side) {
@@ -179,19 +194,23 @@ const coords = ref<{ x: number; y: number }>({ x: 0, y: 0 })
 const isScrolling = ref(false)
 const content = ref<HTMLElement | null>(null)
 
-watch(() => open, async (newVal) => {
-  if (typeof document === 'undefined') return
-  if (newVal) {
-    await nextTick()
+watch(
+  () => open,
+  async (newVal) => {
+    if (typeof document === 'undefined') return
+    if (newVal) {
+      await nextTick()
 
-    content.value = (slaydoverContent.value?.children?.[0] as HTMLElement) || null
-    document.documentElement.style.overscrollBehaviorY = 'none'
-    document.body.style.overscrollBehaviorY = 'none'
-  } else {
-    document.documentElement.style.overscrollBehaviorY = ''
-    document.body.style.overscrollBehaviorY = ''
+      content.value =
+        (slaydoverContent.value?.children?.[0] as HTMLElement) || null
+      document.documentElement.style.overscrollBehaviorY = 'none'
+      document.body.style.overscrollBehaviorY = 'none'
+    } else {
+      document.documentElement.style.overscrollBehaviorY = ''
+      document.body.style.overscrollBehaviorY = ''
+    }
   }
-})
+)
 
 const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
   passive: false,
@@ -203,7 +222,8 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
     if (
       (activePosition.value === 'bottom' && content.value.scrollTop > 0) ||
       (activePosition.value === 'top' &&
-        content.value.scrollTop < content.value.scrollHeight - content.value.clientHeight)
+        content.value.scrollTop <
+          content.value.scrollHeight - content.value.clientHeight)
     ) {
       canClose.value = false
     }
@@ -219,8 +239,16 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
 
     if (isScrolling.value) return
 
-    if (['top', 'bottom'].includes(activePosition.value) && Math.abs(lengthX.value) > 50) return
-    if (['left', 'right'].includes(activePosition.value) && Math.abs(lengthY.value) > 50) return
+    if (
+      ['top', 'bottom'].includes(activePosition.value) &&
+      Math.abs(lengthX.value) > 50
+    )
+      return
+    if (
+      ['left', 'right'].includes(activePosition.value) &&
+      Math.abs(lengthY.value) > 50
+    )
+      return
 
     if (activePosition.value === 'bottom') {
       if (lengthY.value < 0) {
@@ -281,7 +309,10 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
       ['up', 'down', 'none'].includes(direction) &&
       ['top', 'bottom'].includes(activePosition.value)
     ) {
-      if (Math.abs(coords.value?.y) < content.value.getBoundingClientRect().height / 4) {
+      if (
+        Math.abs(coords.value?.y) <
+        content.value.getBoundingClientRect().height / 4
+      ) {
         closing = false
         coords.value.y = 0
       }
@@ -289,7 +320,10 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
       ['left', 'right', 'none'].includes(direction) &&
       ['left', 'right'].includes(activePosition.value)
     ) {
-      if (Math.abs(coords.value?.x) < content.value.getBoundingClientRect().width / 4) {
+      if (
+        Math.abs(coords.value?.x) <
+        content.value.getBoundingClientRect().width / 4
+      ) {
         closing = false
         coords.value.x = 0
       }
@@ -304,7 +338,7 @@ const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
     resetElementTransform(content.value)
 
     coords.value = { x: 0, y: 0 }
-  },
+  }
 })
 
 watch(isSwiping, (newVal) => {

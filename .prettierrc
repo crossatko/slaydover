@@ -6,6 +6,5 @@
   "bracketSameLine": false,
   "vueIndentScriptAndStyle": false,
   "printWidth": 80,
-  "trailingComma": "none",
-  "plugins": ["prettier-plugin-tailwindcss"]
+  "trailingComma": "none"
 }
