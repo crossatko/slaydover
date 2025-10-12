@@ -30,8 +30,8 @@ npm install @crossatko/slaydover
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
-import Slaydover from 'slaydover'
-import 'slaydover/dist/slaydover.css'
+import Slaydover from '@crossatko/slaydover'
+import '@crossatko/slaydover/dist/slaydover.css'
 
 const open = ref(false)
 </script>
