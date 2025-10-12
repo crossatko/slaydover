@@ -31,7 +31,7 @@ npm install @crossatko/slaydover
 <script setup lang="ts">
 import { ref } from 'vue'
 import Slaydover from 'slaydover'
-import 'slaydover/dist/style.css'
+import 'slaydover/dist/slaydover.css'
 
 const open = ref(false)
 </script>
@@ -40,9 +40,16 @@ const open = ref(false)
   <button @click="open = true">Open Slaydover</button>
 
   <Slaydover v-model="open" position="bottom lg:right">
-    <div>Your awesome content 👌</div>
+    <div class="content">Your awesome content 👌</div>
   </Slaydover>
 </template>
+
+<style>
+.content {
+  padding: 1rem;
+  background: white;
+}
+</style>
 ```
 
 ---
@@ -90,7 +97,7 @@ To customize it, use the `#overlay` slot:
 
 ```vue
 <template #overlay>
-  <div class="bg-black/40 backdrop-blur-sm"></div>
+  <div class="bg-black/40"></div>
 </template>
 ```
 
@@ -121,8 +128,8 @@ To customize it, use the `#overlay` slot:
 ```vue
 <Slaydover
   v-model="open"
-  position="top md:right"
   class="transition-all duration-300"
+  position="top md:right"
   :class="{ 'backdrop-blur-sm': open }"
 >
   <template #overlay>
