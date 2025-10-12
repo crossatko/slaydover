@@ -1,7 +1,7 @@
 {
-  "name": "slaydover",
+  "name": "@crossatko/slaydover",
   "version": "0.1.1",
-  "private": true,
+  "private": false,
   "type": "module",
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
@@ -15,9 +15,7 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.1.14",
     "@vueuse/core": "^13.9.0",
-    "tailwindcss": "^4.1.14",
     "vue": "^3.5.22"
   },
   "devDependencies": {
@@ -27,7 +25,6 @@
     "@vue/tsconfig": "^0.8.1",
     "npm-run-all2": "^8.0.4",
     "prettier": "^3.6.2",
-    "prettier-plugin-tailwindcss": "^0.6.14",
     "typescript": "~5.9.0",
     "vite": "^7.1.7",
     "vite-plugin-vue-devtools": "^8.0.2",
