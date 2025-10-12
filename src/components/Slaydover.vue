@@ -64,7 +64,7 @@ const sidesByBreakpoints = computed((): Breakpoints => {
 
 const slaydover = useTemplateRef('slaydover')
 const slaydoverContent = useTemplateRef('slaydoverContent')
-const open = defineModel<boolean>({ default: false })
+const open = defineModel<boolean>()
 
 const activeBreakpoint = ref<Breakpoint | 'default'>('default')
 const activePosition = ref<Side>(sidesByBreakpoints.value.default || 'bottom')
