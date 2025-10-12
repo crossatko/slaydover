@@ -39,12 +39,7 @@ const open = ref(false)
 <template>
   <button @click="open = true" class="p-2 bg-black text-white rounded">Open Slaydover</button>
 
-  <Slaydover
-    v-model="open"
-    position="bottom lg:right"
-    :class="{ 'backdrop-blur-[8px]': open }"
-    class="transition-all duration-300"
-  >
+  <Slaydover v-model="open" position="bottom lg:right">
     <div>Your awesome content 👌</div>
   </Slaydover>
 </template>
