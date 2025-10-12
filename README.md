@@ -3,13 +3,9 @@
 A **responsive, swipeable overlay/drawer component** for Vue and Nuxt that adapts its position based on screen breakpoints.
 Perfect for modals, drawers, and slide-overs with smooth transitions and mobile gestures.
 
----
-
 ## Demo
 
 [Live Demo](https://crossatko.dev/slaydover#demo)
-
----
 
 ## Features
 
@@ -19,8 +15,6 @@ Perfect for modals, drawers, and slide-overs with smooth transitions and mobile 
 - Custom overlay slot
 - Smart scroll and touch gesture handling
 
----
-
 ## Installation
 
 Install the package via npm:
@@ -28,8 +22,6 @@ Install the package via npm:
 ```bash
 npm install @crossatko/slaydover
 ```
-
----
 
 ## Basic Usage
 
@@ -57,8 +49,6 @@ const open = ref(false)
 }
 </style>
 ```
-
----
 
 ## Props
 
@@ -107,14 +97,10 @@ To customize it, use the `#overlay` slot:
 </template>
 ```
 
----
-
 ## Responsive Behavior
 
 - Automatically detects the active breakpoint (based on `window.innerWidth`) and adjusts the position accordingly.
 - You can define position per breakpoint, like `"bottom lg:right"`.
-
----
 
 ## Gestures
 
@@ -126,8 +112,6 @@ To customize it, use the `#overlay` slot:
 
 - Gesture sensitivity adapts to screen size.
 - Intelligent scroll detection prevents accidental closures during scroll.
-
----
 
 ## Example with Tailwind Enhancements
 
@@ -147,8 +131,6 @@ To customize it, use the `#overlay` slot:
   </div>
 </Slaydover>
 ```
-
----
 
 ## License
 
