@@ -37,7 +37,7 @@ const open = ref(false)
 <template>
   <button @click="open = true">Open Slaydover</button>
 
-  <Slaydover v-model="open" position="bottom lg:right">
+  <Slaydover v-model="open" position="bottom lg:right" :speed="300">
     <div class="content">Your awesome content 👌</div>
   </Slaydover>
 </template>
@@ -57,6 +57,7 @@ const open = ref(false)
 | `v-model`     | `boolean`                | `false`                                                          | Controls whether the Slaydover is open                                                                              |
 | `position`    | `string`                 | `'bottom md:right'`                                              | Determines which side(s) the Slaydover appears from. Can include breakpoint-based modifiers (e.g. `'top md:right'`) |
 | `breakpoints` | `Record<string, number>` | `{ xs: 360, sm: 480, md: 768, lg: 1024, xl: 1280, '2xl': 1536 }` | Custom breakpoint definitions (in pixels)                                                                           |
+| speed         | number                   | 300                                                              | Animation speed in ms                                                                                               |
 
 ### Position Syntax
 

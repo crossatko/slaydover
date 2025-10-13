@@ -27,7 +27,7 @@
     "vite-plugin-vue-devtools": "^8.0.2",
     "vue-tsc": "^3.1.0"
   },
-  "description": "",
+  "description": "A sleek, responsive, and gesture-driven drawer component for Vue and Nuxt.",
   "main": "dist/slaydover.es.js",
   "types": "dist/types/main.d.ts",
   "repository": {
