@@ -2,18 +2,17 @@
 import {
   computed,
   nextTick,
-  watch,
   onBeforeUnmount,
   onMounted,
   ref,
-  useTemplateRef
+  useTemplateRef,
+  watch
 } from 'vue'
-import { useSwipe, useDebounceFn } from '@vueuse/core'
-import type { UseSwipeDirection } from '@vueuse/core'
 
 type Breakpoint = string
 type Side = 'top' | 'right' | 'bottom' | 'left'
 type Breakpoints = Partial<Record<'default' | Breakpoint, Side>>
+type GestureState = 'pending' | 'scrolling' | 'closing'
 
 const {
   position = 'bottom md:right',
@@ -25,52 +24,42 @@ const {
     xl: 1280,
     '2xl': 1536
   },
-  modelValue: open
+  speed = 300,
+  modelValue
 } = defineProps<{
   position?: string
   breakpoints?: Record<string, number>
   modelValue: boolean
+  speed?: number
 }>()
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
 }>()
 
-function validatePosition(position: string): boolean {
-  const parts = position.split(' ')
-  return parts.every((part) => {
-    if (part.includes(':')) {
-      const [bp, side] = part.split(':')
-      if (!bp || !side) return false
-      return (
-        breakpoints[bp as Breakpoint] &&
-        ['top', 'right', 'bottom', 'left'].includes(side)
-      )
-    }
-    return ['top', 'right', 'bottom', 'left'].includes(part)
-  })
-}
+const slaydoverContent = useTemplateRef<HTMLElement | null>('slaydoverContent')
+const isAnimating = ref(false)
+const rAFId = ref<number | null>(null)
+const currentTranslate = ref({ x: 0, y: 0 })
+const isContentVisible = ref(modelValue)
+const overscrollScale = ref(1)
+const gestureState = ref<GestureState>('pending')
 
-if (position && !validatePosition(position)) {
-  console.warn(
-    `Invalid position prop: "${position}". Expected format: side or breakpoint:side (e.g., "top md:right").`
-  )
-}
+const overlayTransitionDuration = computed(() => `${speed}ms`)
 
 const sidesByBreakpoints = computed((): Breakpoints => {
   const result: Breakpoints = { default: 'bottom' }
-
   const parts = position.split(' ')
   for (const part of parts) {
     if (part.includes(':')) {
-      const [bp, side] = part.split(':')
+      const [bp, side] = part.split(':') as [Breakpoint, Side]
       if (
         bp &&
         side &&
-        breakpoints[bp as Breakpoint] &&
+        breakpoints[bp] &&
         ['top', 'right', 'bottom', 'left'].includes(side)
       ) {
-        result[bp as Breakpoint] = side as Side
+        result[bp] = side
       }
     } else if (['top', 'right', 'bottom', 'left'].includes(part)) {
       result.default = part as Side
@@ -79,105 +68,63 @@ const sidesByBreakpoints = computed((): Breakpoints => {
   return result
 })
 
-const slaydover = useTemplateRef('slaydover')
-const slaydoverContent = useTemplateRef('slaydoverContent')
-
-const activeBreakpoint = ref<Breakpoint | 'default'>('default')
 const activePosition = ref<Side>(sidesByBreakpoints.value.default || 'bottom')
+const transformOrigin = computed(() => activePosition.value)
 
-function getActiveBreakpoint(): Breakpoint | 'default' {
-  if (typeof window === 'undefined') return 'default'
+const overscrollTransform = computed(() => {
+  if (overscrollScale.value === 1) return ''
+  const axis =
+    activePosition.value === 'top' || activePosition.value === 'bottom'
+      ? 'Y'
+      : 'X'
+  return `scale${axis}(${overscrollScale.value})`
+})
+
+const getActivePosition = () => {
+  if (typeof window === 'undefined') return 'bottom'
+
   const width = window.innerWidth
-  let active: Breakpoint | 'default' = 'default'
-  for (const [bp, size] of Object.entries(breakpoints)) {
+  let currentBp: Breakpoint | 'default' = 'default'
+  const sortedBps = Object.entries(breakpoints).sort((a, b) => a[1] - b[1])
+
+  for (const [bp, size] of sortedBps) {
     if (width >= size) {
-      active = bp as Breakpoint
+      currentBp = bp
     }
   }
 
-  activeBreakpoint.value = active
-  return active
-}
+  let pos = sidesByBreakpoints.value.default || 'bottom'
+  const bpsOrder = ['default', ...sortedBps.map((b) => b[0])]
+  const activeIndex = bpsOrder.indexOf(currentBp)
 
-function getActivePosition(): Side {
-  const activeBp = getActiveBreakpoint()
-
-  let position = sidesByBreakpoints.value.default || 'bottom'
-
-  if (activeBp !== 'default' && sidesByBreakpoints.value[activeBp]) {
-    position = sidesByBreakpoints.value[activeBp] as Side
-  } else {
-    // Check for the largest matching breakpoint less than the active one
-    const bps = Object.keys(breakpoints) as Breakpoint[]
-    const activeIndex = bps.indexOf(activeBp as Breakpoint)
-    for (let i = activeIndex - 1; i >= 0; i--) {
-      const bp = bps?.[i]
-      if (!bp) continue
-      if (sidesByBreakpoints.value[bp as Breakpoint]) {
-        position = sidesByBreakpoints.value[bp as Breakpoint] as Side
-        break
-      }
+  for (let i = activeIndex; i >= 0; i--) {
+    const bpToCheck = bpsOrder[i]
+    if (bpToCheck && sidesByBreakpoints.value[bpToCheck]) {
+      pos = sidesByBreakpoints.value[bpToCheck] as Side
+      break
     }
   }
 
-  activePosition.value = position
-  return position
+  activePosition.value = pos
 }
 
-const resizeHandler = useDebounceFn(() => {
-  getActiveBreakpoint()
-  getActivePosition()
-}, 100)
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null
 
-function generateStyles(): string {
-  if (!slaydover.value) return ''
-  const styleElementId = 'slaydover-dynamic-styles'
-  let styleElement = document.getElementById(
-    styleElementId
-  ) as HTMLStyleElement | null
-  if (!styleElement) {
-    styleElement = document.createElement('style')
-    styleElement.id = styleElementId
-    document.head.appendChild(styleElement)
-  }
-
-  let styles = ''
-  for (const [bp, side] of Object.entries(sidesByBreakpoints.value)) {
-    const selector =
-      bp === 'default'
-        ? ''
-        : `@media (min-width: ${breakpoints[bp as Breakpoint]}px) {`
-    const closingBracket = bp === 'default' ? '' : '}'
-    let positionStyles = ''
-    switch (side) {
-      case 'top':
-        positionStyles = 'top: 0; left: 0; right: 0; bottom: auto;'
-        break
-      case 'right':
-        positionStyles = 'top: 0; right: 0; bottom: 0; left: auto;'
-        break
-      case 'bottom':
-        positionStyles = 'bottom: 0; left: 0; right: 0; top: auto;'
-        break
-      case 'left':
-        positionStyles = 'top: 0; left: 0; bottom: 0; right: auto;'
-        break
+  return function (...args: Parameters<T>) {
+    if (timeoutId) {
+      clearTimeout(timeoutId)
     }
-    styles += `
-      ${selector}
-      .slaydover-content {
-        ${positionStyles}
-      }
-      ${closingBracket}
-    `
+    timeoutId = setTimeout(() => {
+      fn(...args)
+    }, delay)
   }
-  styleElement.innerHTML = styles
-  return styles
 }
+
+const resizeHandler = debounce(getActivePosition, 100)
 
 onMounted(() => {
-  generateStyles()
-  getActiveBreakpoint()
+  getActivePosition()
   window.addEventListener('resize', resizeHandler)
 })
 
@@ -185,198 +132,270 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
 })
 
+function animateTo(
+  targetTranslate: { x: number; y: number },
+  targetScale: number = 1,
+  onComplete?: () => void
+) {
+  if (rAFId.value) cancelAnimationFrame(rAFId.value)
+
+  isAnimating.value = true
+  let lastTime = performance.now()
+  const stiffness = 4000 / speed
+
+  const step = (currentTime: number) => {
+    const dt = (currentTime - lastTime) / 1000
+    lastTime = currentTime
+
+    const currentPos = currentTranslate.value
+    const distanceX = targetTranslate.x - currentPos.x
+    const distanceY = targetTranslate.y - currentPos.y
+    const distanceScale = targetScale - overscrollScale.value
+
+    if (
+      Math.abs(distanceX) < 0.5 &&
+      Math.abs(distanceY) < 0.5 &&
+      Math.abs(distanceScale) < 0.001
+    ) {
+      currentTranslate.value = targetTranslate
+      overscrollScale.value = targetScale
+      isAnimating.value = false
+      rAFId.value = null
+      onComplete?.()
+      return
+    }
+
+    const factor = 1 - Math.exp(-stiffness * dt)
+
+    currentTranslate.value.x += distanceX * factor
+    currentTranslate.value.y += distanceY * factor
+    overscrollScale.value += distanceScale * factor
+
+    rAFId.value = requestAnimationFrame(step)
+  }
+  rAFId.value = requestAnimationFrame(step)
+}
+
+const getOffscreenPosition = (): { x: number; y: number } => {
+  if (!slaydoverContent.value) return { x: 0, y: 0 }
+
+  const { clientWidth: width, clientHeight: height } = slaydoverContent.value
+
+  switch (activePosition.value) {
+    case 'top':
+      return { x: 0, y: -height }
+    case 'bottom':
+      return { x: 0, y: height }
+    case 'left':
+      return { x: -width, y: 0 }
+    case 'right':
+      return { x: width, y: 0 }
+    default:
+      return { x: 0, y: 0 }
+  }
+}
+
 function close() {
+  if (isAnimating.value) return
   emit('update:modelValue', false)
 }
 
-const canClose = ref(true)
-const coords = ref<{ x: number; y: number }>({ x: 0, y: 0 })
-const isScrolling = ref(false)
-const content = ref<HTMLElement | null>(null)
+const startPos = ref({ x: 0, y: 0 })
+const dragStartPos = ref({ x: 0, y: 0 })
+const latestDelta = ref({ x: 0, y: 0 })
 
-watch(
-  () => open,
-  async (newVal) => {
-    if (typeof document === 'undefined') return
-    if (newVal) {
-      await nextTick()
+const isScrolledToEnd = (el: HTMLElement) =>
+  Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 1
 
-      content.value =
-        (slaydoverContent.value?.children?.[0] as HTMLElement) || null
-      document.documentElement.style.overscrollBehaviorY = 'none'
-      document.body.style.overscrollBehaviorY = 'none'
-    } else {
-      document.documentElement.style.overscrollBehaviorY = ''
-      document.body.style.overscrollBehaviorY = ''
-    }
+function updateDragStyles() {
+  if (gestureState.value !== 'closing') {
+    rAFId.value = null
+    return
   }
-)
 
-const { direction, isSwiping, lengthX, lengthY } = useSwipe(slaydoverContent, {
-  passive: false,
-  onSwipe(e: TouchEvent) {
-    if (!content.value) return
+  const { x: deltaX, y: deltaY } = latestDelta.value
 
-    coords.value = { x: lengthX.value, y: lengthY.value }
+  const pos = activePosition.value
 
-    if (
-      (activePosition.value === 'bottom' && content.value.scrollTop > 0) ||
-      (activePosition.value === 'top' &&
-        content.value.scrollTop <
-          content.value.scrollHeight - content.value.clientHeight)
-    ) {
-      canClose.value = false
-    }
+  const getOverscrollScale = (distance: number) =>
+    1 + Math.atan(distance / 500) * 0.1
 
-    if (!canClose.value) return
+  overscrollScale.value = 1
 
-    content.value.onscroll = () => {
-      isScrolling.value = true
-    }
-    content.value.onscrollend = () => {
-      isScrolling.value = false
-    }
+  switch (pos) {
+    case 'bottom':
+      currentTranslate.value.y = Math.max(0, deltaY)
+      if (deltaY < 0) {
+        overscrollScale.value = getOverscrollScale(Math.abs(deltaY))
+      }
+      break
+    case 'top':
+      currentTranslate.value.y = Math.min(0, deltaY)
+      if (deltaY > 0) {
+        overscrollScale.value = getOverscrollScale(deltaY)
+      }
+      break
+    case 'right':
+      currentTranslate.value.x = Math.max(0, deltaX)
+      if (deltaX < 0) {
+        overscrollScale.value = getOverscrollScale(Math.abs(deltaX))
+      }
+      break
+    case 'left':
+      currentTranslate.value.x = Math.min(0, deltaX)
+      if (deltaX > 0) {
+        overscrollScale.value = getOverscrollScale(deltaX)
+      }
+      break
+  }
 
-    if (isScrolling.value) return
+  rAFId.value = null
+}
 
-    if (
-      ['top', 'bottom'].includes(activePosition.value) &&
-      Math.abs(lengthX.value) > 50
-    )
+function onTouchStart(e: TouchEvent) {
+  if (isAnimating.value || e.touches.length !== 1) return
+  if (rAFId.value) cancelAnimationFrame(rAFId.value)
+  if (slaydoverContent.value) slaydoverContent.value.style.transition = ''
+
+  const touch = e.touches[0]
+  if (!touch) return
+
+  gestureState.value = 'pending'
+  startPos.value = { x: touch.clientX, y: touch.clientY }
+  latestDelta.value = { x: 0, y: 0 }
+}
+
+function onTouchMove(e: TouchEvent) {
+  if (isAnimating.value || e.touches.length !== 1) return
+  if (gestureState.value === 'scrolling') return
+
+  const touch = e.touches[0]!
+  if (!touch) return
+
+  const scrollEl = slaydoverContent.value?.children?.[0] as HTMLElement | null
+
+  if (!scrollEl) return
+
+  if (gestureState.value === 'pending') {
+    const overallDeltaY = touch.clientY - startPos.value.y
+    const overallDeltaX = touch.clientX - startPos.value.x
+
+    if (Math.abs(overallDeltaX) < 5 && Math.abs(overallDeltaY) < 5) {
       return
-    if (
-      ['left', 'right'].includes(activePosition.value) &&
-      Math.abs(lengthY.value) > 50
-    )
-      return
+    }
+
+    let isClosingGesture = false
 
     if (activePosition.value === 'bottom') {
-      if (lengthY.value < 0) {
-        content.value.style.transform = `translateY(${coords.value.y * -1}px)`
-      } else {
-        content.value.style.transform = `scaleY(${1 + coords.value.y * 0.0002})`
-        content.value.style.transformOrigin = 'bottom'
+      if (overallDeltaY > Math.abs(overallDeltaX) && scrollEl.scrollTop <= 0) {
+        isClosingGesture = true
       }
     } else if (activePosition.value === 'top') {
-      if (lengthY.value > 0) {
-        content.value.style.transform = `translateY(${coords.value.y * -1}px)`
-      } else {
-        content.value.style.transform = `scaleY(${1 - coords.value.y * 0.0002})`
-        content.value.style.transformOrigin = 'top'
+      if (
+        -overallDeltaY > Math.abs(overallDeltaX) &&
+        isScrolledToEnd(scrollEl)
+      ) {
+        isClosingGesture = true
       }
-    } else if (activePosition.value === 'left') {
-      if (lengthX.value > 0) {
-        content.value.style.transform = `translateX(${coords.value.x * -1}px)`
-      } else {
-        content.value.style.transform = `scaleX(${1 - coords.value.x * 0.0001})`
-        content.value.style.transformOrigin = 'left'
-      }
-    } else if (activePosition.value === 'right') {
-      if (lengthX.value < 0) {
-        content.value.style.transform = `translateX(${coords.value.x * -1}px)`
-      } else {
-        content.value.style.transform = `scaleX(${1 + coords.value.x * 0.0001})`
-        content.value.style.transformOrigin = 'right'
-      }
+    } else if (Math.abs(overallDeltaY) < Math.abs(overallDeltaX)) {
+      isClosingGesture = true
+    }
+
+    if (isClosingGesture) {
+      gestureState.value = 'closing'
+      dragStartPos.value = { x: touch.clientX, y: touch.clientY }
     } else {
-      content.value.style.transform = `translateX(0px) translateY(0px) scale(1)`
-    }
-  },
-  onSwipeEnd(e: TouchEvent, direction: UseSwipeDirection) {
-    if (!content.value) return
-
-    let closing = false
-
-    if (activePosition.value === 'bottom' && direction === 'down') {
-      if (!canClose.value) {
-        canClose.value = true
-        return
-      }
-      closing = true
-    } else if (activePosition.value === 'top' && direction === 'up') {
-      if (!canClose.value) {
-        canClose.value = true
-        return
-      }
-      closing = true
-    } else if (activePosition.value === 'left' && direction === 'left') {
-      closing = true
-    } else if (activePosition.value === 'right' && direction === 'right') {
-      closing = true
-    }
-
-    if (
-      ['up', 'down', 'none'].includes(direction) &&
-      ['top', 'bottom'].includes(activePosition.value)
-    ) {
-      if (
-        Math.abs(coords.value?.y) <
-        content.value.getBoundingClientRect().height / 4
-      ) {
-        closing = false
-        coords.value.y = 0
-      }
-    } else if (
-      ['left', 'right', 'none'].includes(direction) &&
-      ['left', 'right'].includes(activePosition.value)
-    ) {
-      if (
-        Math.abs(coords.value?.x) <
-        content.value.getBoundingClientRect().width / 4
-      ) {
-        closing = false
-        coords.value.x = 0
-      }
-    }
-
-    if (closing) {
-      coords.value = { x: 0, y: 0 }
-      close()
+      gestureState.value = 'scrolling'
       return
     }
-
-    resetElementTransform(content.value)
-
-    coords.value = { x: 0, y: 0 }
   }
-})
 
-watch(isSwiping, (newVal) => {
-  if (!newVal || !content.value) return
-  if (
-    (direction.value === 'left' && activePosition.value === 'left') ||
-    (direction.value === 'right' && activePosition.value === 'right') ||
-    (direction.value === 'up' && activePosition.value === 'top') ||
-    (direction.value === 'down' && activePosition.value === 'bottom')
-  ) {
-    content.value.style.transition = `.05s ease`
-    setTimeout(() => {
-      if (!content.value) return
-      content.value.style.transition = ''
-    }, 500)
+  e.preventDefault()
+  latestDelta.value.x = touch.clientX - dragStartPos.value.x
+  latestDelta.value.y = touch.clientY - dragStartPos.value.y
+  if (!rAFId.value) {
+    rAFId.value = requestAnimationFrame(updateDragStyles)
   }
-})
-
-function resetElementTransform(el: HTMLElement | null) {
-  if (!el) return
-  el.style.transition = 'transform 0.2s ease-in-out'
-  el.style.transform = 'translateX(0px) translateY(0px) scale(1)'
-  setTimeout(() => {
-    if (!el) return
-    el.style.transition = ''
-  }, 300)
 }
+
+function onTouchEnd() {
+  if (gestureState.value !== 'closing' || !slaydoverContent.value) return
+  gestureState.value = 'pending'
+
+  if (rAFId.value) {
+    cancelAnimationFrame(rAFId.value)
+    rAFId.value = null
+  }
+
+  const { clientWidth: width, clientHeight: height } = slaydoverContent.value
+  const { x: deltaX, y: deltaY } = latestDelta.value
+
+  let shouldClose = false
+
+  const pos = activePosition.value
+  switch (pos) {
+    case 'bottom':
+      if (deltaY > height * 0.2) shouldClose = true
+      break
+    case 'top':
+      if (deltaY < -height * 0.2) shouldClose = true
+      break
+    case 'right':
+      if (deltaX > width * 0.2) shouldClose = true
+      break
+    case 'left':
+      if (deltaX < -width * 0.2) shouldClose = true
+      break
+  }
+
+  if (shouldClose) {
+    emit('update:modelValue', false)
+  } else {
+    animateTo({ x: 0, y: 0 }, 1)
+  }
+}
+
+watch(
+  () => modelValue,
+  async (isOpen) => {
+    if (typeof document === 'undefined') return
+    document.body.style.overflow = isOpen ? 'hidden' : ''
+
+    if (isOpen) {
+      isContentVisible.value = true
+
+      await nextTick()
+
+      currentTranslate.value = getOffscreenPosition()
+      overscrollScale.value = 1
+
+      await nextTick()
+
+      animateTo({ x: 0, y: 0 }, 1)
+    } else {
+      if (!isContentVisible.value) return
+
+      animateTo(getOffscreenPosition(), 1, () => {
+        isContentVisible.value = false
+      })
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
-  <div ref="slaydover" class="slaydover">
-    <Transition name="slaydover-overlay">
+  <div
+    class="slaydover"
+    :style="{ pointerEvents: modelValue ? 'auto' : 'none' }"
+  >
+    <Transition name="slaydover-overlay-fade">
       <div
+        v-if="modelValue"
         role="presentation"
         class="slaydover-overlay"
         aria-hidden="true"
         @click="close"
-        v-if="open"
       >
         <slot name="overlay">
           <div class="slaydover-overlay-default"></div>
@@ -384,127 +403,83 @@ function resetElementTransform(el: HTMLElement | null) {
       </div>
     </Transition>
 
-    <Transition :name="`slaydover-content-${getActivePosition()}`">
-      <div class="slaydover-content" ref="slaydoverContent" v-if="open">
-        <slot>
-          <div style="padding: 0.5rem; pointer-events: none">
-            <div
-              style="
-                background: white;
-                padding: 2rem;
-                text-align: center;
-                border-radius: 4px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                margin: 0px auto;
-                pointer-events: auto;
-                max-width: 768px;
-              "
-            >
-              You forgot to place a `slot` inside the Slaydover component!
-            </div>
-          </div>
-        </slot>
-      </div>
-    </Transition>
+    <div
+      v-if="isContentVisible"
+      ref="slaydoverContent"
+      class="slaydover-content"
+      :class="`slaydover-content--${activePosition}`"
+      :style="{
+        transform: `translate3d(${currentTranslate.x}px, ${currentTranslate.y}px, 0) ${overscrollTransform}`,
+        transformOrigin: transformOrigin
+      }"
+      @touchstart="onTouchStart"
+      @touchmove="onTouchMove"
+      @touchend="onTouchEnd"
+    >
+      <slot> </slot>
+    </div>
   </div>
 </template>
 
 <style>
-* {
-  box-sizing: border-box;
-}
 .slaydover {
   position: fixed;
-  width: 100%;
-  height: 100%;
-  max-height: 100svh;
-  max-width: 100svw;
-  overflow: hidden;
-  top: 0;
-  left: 0;
-  pointer-events: none;
+  inset: 0;
+  z-index: 9000;
 }
-
 .slaydover-overlay {
   position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+.slaydover-overlay-default {
   width: 100%;
   height: 100%;
-  top: 0;
-  left: 0;
-  display: flex;
-  z-index: 9005;
-  will-change: transform, opacity;
-}
-.slaydover-overlay > div {
-  flex-grow: 1;
-  pointer-events: auto;
-  position: relative;
-  will-change: transform, opacity;
-}
-
-.slaydover-overlay-default {
   background: rgba(0, 0, 0, 0.5);
 }
-
+.slaydover-overlay-fade-enter-active,
+.slaydover-overlay-fade-leave-active {
+  transition: opacity v-bind(overlayTransitionDuration) ease;
+}
+.slaydover-overlay-fade-enter-from,
+.slaydover-overlay-fade-leave-to {
+  opacity: 0;
+}
 .slaydover-content {
   position: absolute;
   display: flex;
-  z-index: 9010;
-  will-change: transform, opacity;
-  width: auto;
-  min-width: 100px;
+  flex-direction: column;
+  z-index: 2;
+  will-change: transform;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow: hidden;
 }
-
-.slaydover-content > * {
-  flex-grow: 1;
+.slaydover-content > :slotted(*) {
+  flex: 1 1 auto;
   overflow-y: auto;
-  max-height: 100svh;
-  pointer-events: auto;
-  will-change: transform, opacity;
+  -webkit-overflow-scrolling: touch;
 }
-
-.slaydover-overlay-enter-active,
-.slaydover-overlay-leave-active {
-  transition: opacity 0.3s ease;
+.slaydover-content--top {
+  top: 0;
+  left: 0;
+  right: 0;
 }
-
-.slaydover-overlay-enter-from,
-.slaydover-overlay-leave-to {
-  opacity: 0;
+.slaydover-content--bottom {
+  bottom: 0;
+  left: 0;
+  right: 0;
 }
-
-.slaydover-content-left-enter-active,
-.slaydover-content-left-leave-active,
-.slaydover-content-right-enter-active,
-.slaydover-content-right-leave-active,
-.slaydover-content-top-enter-active,
-.slaydover-content-top-leave-active,
-.slaydover-content-bottom-enter-active,
-.slaydover-content-bottom-leave-active {
-  transition:
-    transform 0.3s ease,
-    opacity 0.3s ease;
+.slaydover-content--left {
+  left: 0;
+  top: 0;
+  bottom: 0;
+  flex-direction: row;
 }
-
-.slaydover-content-left-enter-from,
-.slaydover-content-left-leave-to {
-  transform: translateX(-100%);
-  opacity: 0;
-}
-
-.slaydover-content-right-enter-from,
-.slaydover-content-right-leave-to {
-  transform: translateX(100%);
-  opacity: 0;
-}
-.slaydover-content-top-enter-from,
-.slaydover-content-top-leave-to {
-  transform: translateY(-100%);
-  opacity: 0;
-}
-.slaydover-content-bottom-enter-from,
-.slaydover-content-bottom-leave-to {
-  transform: translateY(100%);
-  opacity: 0;
+.slaydover-content--right {
+  right: 0;
+  top: 0;
+  bottom: 0;
+  flex-direction: row;
 }
 </style>
