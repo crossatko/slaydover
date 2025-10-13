@@ -431,10 +431,16 @@ watch(
   position: absolute;
   inset: 0;
   z-index: 1;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
 }
+
+.slaydover-overlay > div {
+  flex-grow: 1;
+}
+
 .slaydover-overlay-default {
-  width: 100%;
-  height: 100%;
   background: rgba(0, 0, 0, 0.5);
 }
 .slaydover-overlay-fade-enter-active,
@@ -460,6 +466,7 @@ watch(
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
+
 .slaydover-content--top {
   top: 0;
   left: 0;
