@@ -123,13 +123,21 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number) {
 
 const resizeHandler = debounce(getActivePosition, 100)
 
+const onKeyUp = (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && modelValue) {
+    emit('update:modelValue', false)
+  }
+}
+
 onMounted(() => {
   getActivePosition()
   window.addEventListener('resize', resizeHandler)
+  window.addEventListener('keyup', onKeyUp)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
+  window.removeEventListener('keyup', onKeyUp)
 })
 
 function animateTo(
