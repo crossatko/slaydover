@@ -165,7 +165,7 @@ function animateTo(
       return
     }
 
-    const factor = 1 - Math.exp(-stiffness * dt)
+    const factor = Math.max(1 - Math.exp(-stiffness * dt), 0)
 
     currentTranslate.value.x += distanceX * factor
     currentTranslate.value.y += distanceY * factor
