@@ -10,7 +10,7 @@ import {
 } from 'vue'
 
 type Breakpoint = string
-type Side = 'top' | 'right' | 'bottom' | 'left'
+type Side = 'top' | 'right' | 'bottom' | 'left' | 'center'
 type Breakpoints = Partial<Record<'default' | Breakpoint, Side>>
 type GestureState = 'pending' | 'scrolling' | 'closing'
 
@@ -44,8 +44,9 @@ const currentTranslate = ref({ x: 0, y: 0 })
 const isContentVisible = ref(modelValue)
 const overscrollScale = ref(1)
 const gestureState = ref<GestureState>('pending')
-
+const contentOpacity = ref(0)
 const overlayTransitionDuration = computed(() => `${speed}ms`)
+const contentTransitionDuration = computed(() => `${speed}ms`)
 
 const sidesByBreakpoints = computed((): Breakpoints => {
   const result: Breakpoints = { default: 'bottom' }
@@ -57,11 +58,11 @@ const sidesByBreakpoints = computed((): Breakpoints => {
         bp &&
         side &&
         breakpoints[bp] &&
-        ['top', 'right', 'bottom', 'left'].includes(side)
+        ['top', 'right', 'bottom', 'left', 'center'].includes(side)
       ) {
         result[bp] = side
       }
-    } else if (['top', 'right', 'bottom', 'left'].includes(part)) {
+    } else if (['top', 'right', 'bottom', 'left', 'center'].includes(part)) {
       result.default = part as Side
     }
   }
@@ -78,6 +79,14 @@ const overscrollTransform = computed(() => {
       ? 'Y'
       : 'X'
   return `scale${axis}(${overscrollScale.value})`
+})
+
+const contentTransform = computed(() => {
+  const mainTransform = `translate3d(${currentTranslate.value.x}px, ${currentTranslate.value.y}px, 0)`
+  if (activePosition.value === 'center') {
+    return `translate(-50%, -50%) ${mainTransform} ${overscrollTransform.value}`
+  }
+  return `${mainTransform} ${overscrollTransform.value}`
 })
 
 const getActivePosition = () => {
@@ -198,6 +207,8 @@ const getOffscreenPosition = (): { x: number; y: number } => {
       return { x: -width, y: 0 }
     case 'right':
       return { x: width, y: 0 }
+    case 'center':
+      return { x: 0, y: 0 }
     default:
       return { x: 0, y: 0 }
   }
@@ -211,25 +222,18 @@ function close() {
 const startPos = ref({ x: 0, y: 0 })
 const dragStartPos = ref({ x: 0, y: 0 })
 const latestDelta = ref({ x: 0, y: 0 })
-
 const isScrolledToEnd = (el: HTMLElement) =>
   Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 1
-
 function updateDragStyles() {
   if (gestureState.value !== 'closing') {
     rAFId.value = null
     return
   }
-
   const { x: deltaX, y: deltaY } = latestDelta.value
-
   const pos = activePosition.value
-
   const getOverscrollScale = (distance: number) =>
     1 + Math.atan(distance / 500) * 0.1
-
   overscrollScale.value = 1
-
   switch (pos) {
     case 'bottom':
       currentTranslate.value.y = Math.max(0, deltaY)
@@ -256,63 +260,51 @@ function updateDragStyles() {
       }
       break
   }
-
   rAFId.value = null
 }
-
 function findScrollableParent(
   element: HTMLElement | null,
   container: HTMLElement
 ): HTMLElement {
   let el = element
   if (!el || !container) return container
-
   while (el && el !== container) {
     if (el.scrollHeight > el.clientHeight) {
-      return el // Found a nested scrollable element
+      return el
     }
     el = el.parentElement
   }
-
   return container
 }
-
 function onTouchStart(e: TouchEvent) {
+  if (activePosition.value === 'center') return
   if (isAnimating.value || e.touches.length !== 1) return
   if (rAFId.value) cancelAnimationFrame(rAFId.value)
   if (slaydoverContent.value) slaydoverContent.value.style.transition = ''
-
   const touch = e.touches[0]
   if (!touch) return
-
   gestureState.value = 'pending'
   startPos.value = { x: touch.clientX, y: touch.clientY }
   latestDelta.value = { x: 0, y: 0 }
 }
-
 function onTouchMove(e: TouchEvent) {
+  if (activePosition.value === 'center') return
   if (isAnimating.value || e.touches.length !== 1) return
   if (gestureState.value === 'scrolling') return
-
   const touch = e.touches[0]!
   if (!touch) return
-
   if (gestureState.value === 'pending') {
     const overallDeltaY = touch.clientY - startPos.value.y
     const overallDeltaX = touch.clientX - startPos.value.x
-
     if (Math.abs(overallDeltaX) < 5 && Math.abs(overallDeltaY) < 5) {
       return
     }
-
     const scrollEl = findScrollableParent(
       e.target as HTMLElement,
       slaydoverContent.value!
     )
-
     let isClosingGesture = false
     const isVerticalGesture = Math.abs(overallDeltaY) > Math.abs(overallDeltaX)
-
     if (activePosition.value === 'bottom') {
       if (
         isVerticalGesture &&
@@ -332,7 +324,6 @@ function onTouchMove(e: TouchEvent) {
     } else if (!isVerticalGesture) {
       isClosingGesture = true
     }
-
     if (isClosingGesture) {
       gestureState.value = 'closing'
       dragStartPos.value = { x: touch.clientX, y: touch.clientY }
@@ -341,7 +332,6 @@ function onTouchMove(e: TouchEvent) {
       return
     }
   }
-
   e.preventDefault()
   latestDelta.value.x = touch.clientX - dragStartPos.value.x
   latestDelta.value.y = touch.clientY - dragStartPos.value.y
@@ -349,21 +339,17 @@ function onTouchMove(e: TouchEvent) {
     rAFId.value = requestAnimationFrame(updateDragStyles)
   }
 }
-
 function onTouchEnd() {
+  if (activePosition.value === 'center') return
   if (gestureState.value !== 'closing' || !slaydoverContent.value) return
   gestureState.value = 'pending'
-
   if (rAFId.value) {
     cancelAnimationFrame(rAFId.value)
     rAFId.value = null
   }
-
   const { clientWidth: width, clientHeight: height } = slaydoverContent.value
   const { x: deltaX, y: deltaY } = latestDelta.value
-
   let shouldClose = false
-
   const pos = activePosition.value
   switch (pos) {
     case 'bottom':
@@ -379,7 +365,6 @@ function onTouchEnd() {
       if (deltaX < -width * 0.2) shouldClose = true
       break
   }
-
   if (shouldClose) {
     emit('update:modelValue', false)
   } else {
@@ -395,21 +380,33 @@ watch(
 
     if (isOpen) {
       isContentVisible.value = true
-
       await nextTick()
 
-      currentTranslate.value = getOffscreenPosition()
-      overscrollScale.value = 1
-
-      await nextTick()
-
-      animateTo({ x: 0, y: 0 }, 1)
+      if (activePosition.value === 'center') {
+        contentOpacity.value = 0
+        currentTranslate.value = { x: 0, y: 0 }
+        await nextTick()
+        contentOpacity.value = 1
+      } else {
+        contentOpacity.value = 1
+        currentTranslate.value = getOffscreenPosition()
+        overscrollScale.value = 1
+        await nextTick()
+        animateTo({ x: 0, y: 0 }, 1)
+      }
     } else {
       if (!isContentVisible.value) return
 
-      animateTo(getOffscreenPosition(), 1, () => {
-        isContentVisible.value = false
-      })
+      if (activePosition.value === 'center') {
+        contentOpacity.value = 0
+        setTimeout(() => {
+          isContentVisible.value = false
+        }, speed)
+      } else {
+        animateTo(getOffscreenPosition(), 1, () => {
+          isContentVisible.value = false
+        })
+      }
     }
   },
   { immediate: true }
@@ -441,8 +438,9 @@ watch(
       class="slaydover-content"
       :class="`slaydover-content--${activePosition}`"
       :style="{
-        transform: `translate3d(${currentTranslate.x}px, ${currentTranslate.y}px, 0) ${overscrollTransform}`,
-        transformOrigin: transformOrigin
+        transform: contentTransform,
+        transformOrigin: transformOrigin,
+        opacity: contentOpacity
       }"
       @touchstart="onTouchStart"
       @touchmove="onTouchMove"
@@ -488,7 +486,7 @@ watch(
   display: flex;
   flex-direction: column;
   z-index: 2;
-  will-change: transform;
+  will-change: transform, opacity;
   max-width: 100vw;
   max-height: 100vh;
   overflow-y: auto;
@@ -516,5 +514,14 @@ watch(
   top: 0;
   bottom: 0;
   flex-direction: row;
+}
+
+.slaydover-content--center {
+  top: 50%;
+  left: 50%;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 8px;
+  transition: opacity v-bind(contentTransitionDuration) ease;
 }
 </style>
