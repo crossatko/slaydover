@@ -419,7 +419,7 @@ watch(
 <template>
   <div
     class="slaydover"
-    :style="{ pointerEvents: modelValue ? 'auto' : 'none' }"
+    :style="`pointer-events: ${modelValue ? 'auto' : 'none'};`"
   >
     <Transition name="slaydover-overlay-fade">
       <div
