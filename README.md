@@ -23,13 +23,49 @@ Install the package via npm:
 npm install @crossatko/slaydover
 ```
 
+### Global insallation
+
+In your main entry file (e.g., `main.js` or `main.ts`):
+
+```ts
+import { createApp } from 'vue'
+import App from './App.vue'
+import Slaydover from '@crossatko/slaydover'
+import '@crossatko/slaydover/style.css'
+
+const app = createApp(App)
+app.component('Slaydover', Slaydover)
+app.mount('#app')
+```
+
+### Local installation
+
+Import the Slaydover and styles in your Vue component:
+
+```vue
+<script setup lang="ts">
+import Slaydover from '@crossatko/slaydover'
+import '@crossatko/slaydover/style.css'
+</script>
+```
+
+### Nuxt
+
+You can also use provided Nuxt module for automatic registration:
+
+```ts
+export default defineNuxtConfig({
+  modules: ['@crossatko/slaydover/nuxt']
+})
+```
+
 ## Basic Usage
 
 ```vue
 <script setup lang="ts">
 import { ref } from 'vue'
 import Slaydover from '@crossatko/slaydover'
-import '@crossatko/slaydover/dist/slaydover.css'
+import '@crossatko/slaydover/style.css'
 
 const open = ref(false)
 </script>
@@ -37,7 +73,7 @@ const open = ref(false)
 <template>
   <button @click="open = true">Open Slaydover</button>
 
-  <Slaydover v-model="open" position="bottom lg:right" :speed="300">
+  <Slaydover v-model="open" position="bottom lg:right">
     <div class="content">Your awesome content 👌</div>
   </Slaydover>
 </template>
@@ -119,8 +155,9 @@ To customize it, use the `#overlay` slot:
 ```vue
 <Slaydover
   v-model="open"
-  class="transition-all duration-300"
   position="top md:right"
+  :speed="500"
+  class="transition-all duration-300"
   :class="{ 'backdrop-blur-sm': open }"
 >
   <template #overlay>
