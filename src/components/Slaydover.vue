@@ -260,6 +260,23 @@ function updateDragStyles() {
   rAFId.value = null
 }
 
+function findScrollableParent(
+  element: HTMLElement | null,
+  container: HTMLElement
+): HTMLElement {
+  let el = element
+  if (!el || !container) return container
+
+  while (el && el !== container) {
+    if (el.scrollHeight > el.clientHeight) {
+      return el // Found a nested scrollable element
+    }
+    el = el.parentElement
+  }
+
+  return container
+}
+
 function onTouchStart(e: TouchEvent) {
   if (isAnimating.value || e.touches.length !== 1) return
   if (rAFId.value) cancelAnimationFrame(rAFId.value)
@@ -280,10 +297,6 @@ function onTouchMove(e: TouchEvent) {
   const touch = e.touches[0]!
   if (!touch) return
 
-  const scrollEl = slaydoverContent.value?.children?.[0] as HTMLElement | null
-
-  if (!scrollEl) return
-
   if (gestureState.value === 'pending') {
     const overallDeltaY = touch.clientY - startPos.value.y
     const overallDeltaX = touch.clientX - startPos.value.x
@@ -292,20 +305,31 @@ function onTouchMove(e: TouchEvent) {
       return
     }
 
+    const scrollEl = findScrollableParent(
+      e.target as HTMLElement,
+      slaydoverContent.value!
+    )
+
     let isClosingGesture = false
+    const isVerticalGesture = Math.abs(overallDeltaY) > Math.abs(overallDeltaX)
 
     if (activePosition.value === 'bottom') {
-      if (overallDeltaY > Math.abs(overallDeltaX) && scrollEl.scrollTop <= 0) {
+      if (
+        isVerticalGesture &&
+        overallDeltaY > 0 &&
+        (!scrollEl || scrollEl.scrollTop <= 0)
+      ) {
         isClosingGesture = true
       }
     } else if (activePosition.value === 'top') {
       if (
-        -overallDeltaY > Math.abs(overallDeltaX) &&
-        isScrolledToEnd(scrollEl)
+        isVerticalGesture &&
+        overallDeltaY < 0 &&
+        (!scrollEl || isScrolledToEnd(scrollEl))
       ) {
         isClosingGesture = true
       }
-    } else if (Math.abs(overallDeltaY) < Math.abs(overallDeltaX)) {
+    } else if (!isVerticalGesture) {
       isClosingGesture = true
     }
 
@@ -467,10 +491,6 @@ watch(
   will-change: transform;
   max-width: 100vw;
   max-height: 100vh;
-  overflow: hidden;
-}
-.slaydover-content > :slotted(*) {
-  flex: 1 1 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
