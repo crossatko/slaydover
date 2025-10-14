@@ -7,12 +7,25 @@ export default defineConfig({
   plugins: [vue(), tailwindcss()],
   build: {
     lib: {
-      entry: path.resolve(__dirname, 'src/main.ts'),
+      entry: {
+        slaydover: path.resolve(__dirname, 'src/main.ts'),
+        nuxt: path.resolve(__dirname, 'src/nuxt/module.ts')
+      },
       name: 'Slaydover',
-      fileName: (format) => `slaydover.${format}.js`
+
+      formats: ['cjs', 'es'],
+
+      fileName: (format, entryName) => {
+        if (entryName === 'nuxt') {
+          return 'nuxt/module.mjs'
+        }
+
+        const extension = format === 'es' ? 'js' : 'cjs'
+        return `slaydover.${extension}`
+      }
     },
     rollupOptions: {
-      external: ['vue'],
+      external: ['vue', '@nuxt/kit', '@nuxt/schema'],
       output: {
         globals: {
           vue: 'Vue'
