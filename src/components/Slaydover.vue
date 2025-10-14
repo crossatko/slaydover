@@ -316,7 +316,7 @@ function onTouchMove(e: TouchEvent) {
     if (activePosition.value === 'bottom') {
       if (
         isVerticalGesture &&
-        overallDeltaY > 0 &&
+        (scrollEl.scrollHeight <= scrollEl.clientHeight || overallDeltaY > 0) &&
         (!scrollEl || scrollEl.scrollTop <= 0)
       ) {
         isClosingGesture = true
@@ -324,7 +324,7 @@ function onTouchMove(e: TouchEvent) {
     } else if (activePosition.value === 'top') {
       if (
         isVerticalGesture &&
-        overallDeltaY < 0 &&
+        (scrollEl.scrollHeight <= scrollEl.clientHeight || overallDeltaY < 0) &&
         (!scrollEl || isScrolledToEnd(scrollEl))
       ) {
         isClosingGesture = true
