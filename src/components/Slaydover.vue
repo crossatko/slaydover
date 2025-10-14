@@ -25,12 +25,14 @@ const {
     '2xl': 1536
   },
   speed = 300,
-  modelValue
+  modelValue,
+  titleId
 } = defineProps<{
   position?: string
   breakpoints?: Record<string, number>
   modelValue: boolean
   speed?: number
+  titleId?: string
 }>()
 
 const emit = defineEmits<{
@@ -392,7 +394,11 @@ watch(
         currentTranslate.value = getOffscreenPosition()
         overscrollScale.value = 1
         await nextTick()
+
         animateTo({ x: 0, y: 0 }, 1)
+
+        await nextTick()
+        slaydoverContent.value?.focus()
       }
     } else {
       if (!isContentVisible.value) return
@@ -435,6 +441,10 @@ watch(
     <div
       v-if="isContentVisible"
       ref="slaydoverContent"
+      role="dialog"
+      aria-modal="true"
+      :aria-labelledby="titleId"
+      tabindex="-1"
       class="slaydover-content"
       :class="`slaydover-content--${activePosition}`"
       :style="{

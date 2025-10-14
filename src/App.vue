@@ -9,8 +9,29 @@ const open = ref(false)
 <template>
   <button @click="open = true">Open slaydover</button>
 
-  <Slaydover v-model="open" position="bottom sm:center lg:right" :speed="300">
+  <button
+    v-for="i in 5"
+    class="focus-within:ring-4 size-8 flex items-center justify-center"
+  >
+    {{ i }}
+  </button>
+
+  <Slaydover
+    v-model="open"
+    position="bottom sm:center lg:right"
+    :speed="300"
+    titleId="my-dialog"
+  >
     <div class="content max-w-sm mx-auto">
+      <h2 id="my-dialog" class="text-2xl font-bold">My dialog title</h2>
+
+      <button
+        v-for="i in 5"
+        class="focus-within:ring-4 size-8 flex items-center justify-center"
+      >
+        {{ i }}
+      </button>
+
       <p>
         Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolore odio
         voluptatum at architecto! Ad saepe molestiae sapiente quidem iusto

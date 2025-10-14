@@ -94,6 +94,9 @@ const open = ref(false)
 | `position`    | `string`                 | `'bottom md:right'`                                              | Determines which side(s) the Slaydover appears from. Can include breakpoint-based modifiers (e.g. `'top md:right'`) |
 | `breakpoints` | `Record<string, number>` | `{ xs: 360, sm: 480, md: 768, lg: 1024, xl: 1280, '2xl': 1536 }` | Custom breakpoint definitions (in pixels)                                                                           |
 | speed         | number                   | 300                                                              | Animation speed in ms                                                                                               |
+| titleId       | string                   | `undefined`                                                      | Optional ID for the title element for accessibility (ARIA)                                                          |
+
+` `
 
 ### Position Syntax
 
