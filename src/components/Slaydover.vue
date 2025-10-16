@@ -422,7 +422,9 @@ watch(
 <template>
   <div
     class="slaydover"
-    :style="`pointer-events: ${modelValue ? 'auto' : 'none'};`"
+    :class="{
+      'slaydover-interactive': modelValue
+    }"
   >
     <Transition name="slaydover-overlay-fade">
       <div
@@ -466,7 +468,13 @@ watch(
   position: fixed;
   inset: 0;
   z-index: 9000;
+  pointer-events: none;
 }
+
+.slaydover.slaydover-interactive {
+  pointer-events: auto;
+}
+
 .slaydover-overlay {
   position: absolute;
   inset: 0;
