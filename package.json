@@ -21,7 +21,10 @@
     "dev": "vite",
     "preview": "vite preview",
     "build": "vite build && npm run build:types",
-    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types --p tsconfig.app.json --noEmit false"
+    "build:types": "vue-tsc --declaration --emitDeclarationOnly --outDir dist/types --p tsconfig.app.json --noEmit false",
+    "release:patch": "npm version patch && git push && git push --tags",
+    "release:minor": "npm version minor && git push && git push --tags",
+    "release:major": "npm version major && git push && git push --tags"
   },
   "main": "dist/slaydover.js",
   "types": "dist/types/main.d.ts",
