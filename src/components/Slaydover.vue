@@ -224,8 +224,52 @@ function close() {
 const startPos = ref({ x: 0, y: 0 })
 const dragStartPos = ref({ x: 0, y: 0 })
 const latestDelta = ref({ x: 0, y: 0 })
-const isScrolledToEnd = (el: HTMLElement) =>
-  Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 1
+
+function canScroll(
+  element: HTMLElement | null,
+  container: HTMLElement,
+  deltaX: number,
+  deltaY: number
+): boolean {
+  let el = element
+  if (!el || !container) return false
+
+  while (
+    el &&
+    el !== document.body &&
+    !el.isEqualNode(container.parentElement)
+  ) {
+    if (el.scrollHeight > el.clientHeight || el.scrollWidth > el.clientWidth) {
+      const style = window.getComputedStyle(el)
+      const overflowY = style.overflowY
+      const overflowX = style.overflowX
+      const isScrollableY = ['auto', 'scroll'].includes(overflowY)
+      const isScrollableX = ['auto', 'scroll'].includes(overflowX)
+
+      if (deltaY !== 0 && isScrollableY) {
+        if (deltaY > 0) {
+          if (el.scrollTop > 0) return true
+        } else {
+          if (el.scrollTop + el.clientHeight < el.scrollHeight - 1) return true
+        }
+      }
+
+      if (deltaX !== 0 && isScrollableX) {
+        if (deltaX > 0) {
+          if (el.scrollLeft > 0) return true
+        } else {
+          if (el.scrollLeft + el.clientWidth < el.scrollWidth - 1) return true
+        }
+      }
+    }
+
+    if (el === container) break
+
+    el = el.parentElement
+  }
+  return false
+}
+
 function updateDragStyles() {
   if (gestureState.value !== 'closing') {
     rAFId.value = null
@@ -264,20 +308,7 @@ function updateDragStyles() {
   }
   rAFId.value = null
 }
-function findScrollableParent(
-  element: HTMLElement | null,
-  container: HTMLElement
-): HTMLElement {
-  let el = element
-  if (!el || !container) return container
-  while (el && el !== container) {
-    if (el.scrollHeight > el.clientHeight) {
-      return el
-    }
-    el = el.parentElement
-  }
-  return container
-}
+
 function onTouchStart(e: TouchEvent) {
   if (activePosition.value === 'center') return
   if (isAnimating.value || e.touches.length !== 1) return
@@ -289,43 +320,57 @@ function onTouchStart(e: TouchEvent) {
   startPos.value = { x: touch.clientX, y: touch.clientY }
   latestDelta.value = { x: 0, y: 0 }
 }
+
 function onTouchMove(e: TouchEvent) {
   if (activePosition.value === 'center') return
   if (isAnimating.value || e.touches.length !== 1) return
   if (gestureState.value === 'scrolling') return
+
   const touch = e.touches[0]!
   if (!touch) return
+
   if (gestureState.value === 'pending') {
     const overallDeltaY = touch.clientY - startPos.value.y
     const overallDeltaX = touch.clientX - startPos.value.x
+
     if (Math.abs(overallDeltaX) < 5 && Math.abs(overallDeltaY) < 5) {
       return
     }
-    const scrollEl = findScrollableParent(
-      e.target as HTMLElement,
-      slaydoverContent.value!
-    )
-    let isClosingGesture = false
+
     const isVerticalGesture = Math.abs(overallDeltaY) > Math.abs(overallDeltaX)
+
+    const canScrollContent = canScroll(
+      e.target as HTMLElement,
+      slaydoverContent.value!,
+      isVerticalGesture ? 0 : overallDeltaX,
+      isVerticalGesture ? overallDeltaY : 0
+    )
+
+    if (canScrollContent) {
+      gestureState.value = 'scrolling'
+      return
+    }
+
+    let isClosingGesture = false
+
     if (activePosition.value === 'bottom') {
-      if (
-        isVerticalGesture &&
-        (scrollEl.scrollHeight <= scrollEl.clientHeight || overallDeltaY > 0) &&
-        (!scrollEl || scrollEl.scrollTop <= 0)
-      ) {
+      if (isVerticalGesture && overallDeltaY > 0) {
         isClosingGesture = true
       }
     } else if (activePosition.value === 'top') {
-      if (
-        isVerticalGesture &&
-        (scrollEl.scrollHeight <= scrollEl.clientHeight || overallDeltaY < 0) &&
-        (!scrollEl || isScrolledToEnd(scrollEl))
-      ) {
+      if (isVerticalGesture && overallDeltaY < 0) {
         isClosingGesture = true
       }
-    } else if (!isVerticalGesture) {
-      isClosingGesture = true
+    } else if (activePosition.value === 'right') {
+      if (!isVerticalGesture && overallDeltaX > 0) {
+        isClosingGesture = true
+      }
+    } else if (activePosition.value === 'left') {
+      if (!isVerticalGesture && overallDeltaX < 0) {
+        isClosingGesture = true
+      }
     }
+
     if (isClosingGesture) {
       gestureState.value = 'closing'
       dragStartPos.value = { x: touch.clientX, y: touch.clientY }
@@ -334,13 +379,16 @@ function onTouchMove(e: TouchEvent) {
       return
     }
   }
+
   e.preventDefault()
   latestDelta.value.x = touch.clientX - dragStartPos.value.x
   latestDelta.value.y = touch.clientY - dragStartPos.value.y
+
   if (!rAFId.value) {
     rAFId.value = requestAnimationFrame(updateDragStyles)
   }
 }
+
 function onTouchEnd() {
   if (activePosition.value === 'center') return
   if (gestureState.value !== 'closing' || !slaydoverContent.value) return
