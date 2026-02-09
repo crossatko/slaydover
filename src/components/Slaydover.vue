@@ -427,6 +427,7 @@ watch(
   async (isOpen) => {
     if (typeof document === 'undefined') return
     document.body.style.overflow = isOpen ? 'hidden' : ''
+    document.documentElement.style.overflow = isOpen ? 'hidden' : ''
 
     if (isOpen) {
       isContentVisible.value = true
