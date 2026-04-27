@@ -149,6 +149,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('resize', resizeHandler)
   window.removeEventListener('keyup', onKeyUp)
+
+  window.document.body.style.overflow = ''
+  window.document.documentElement.style.overflow = ''
 })
 
 function animateTo(
